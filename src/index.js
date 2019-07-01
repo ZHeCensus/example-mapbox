@@ -27,7 +27,7 @@ function App() {
       states: {
         type: "vector",
         tiles: [
-          "https://gis-server.data.census.gov/arcgis/rest/services/Hosted/VT_2017_040_00_PY_D1/VectorTileServer/tile/{z}/{x}/{y}.pbf"
+          "https://gis-server.data.census.gov/arcgis/rest/services/Hosted/VT_2017_040_00_PY_D1/VectorTileServer/tile/{z}/{y}/{x}.pbf"
         ]
       }
     },
@@ -119,8 +119,7 @@ function App() {
             paint: {
               "fill-color": expression
             },
-            minzoom: 0,
-            maxzoom: 18
+            maxzoom: 17
           });
         }
       );
