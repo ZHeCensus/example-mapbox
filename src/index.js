@@ -45,30 +45,18 @@ function App() {
   const [style, setStyle] = useState(light_layers);
 
   const mapContainer = useRef();
-
-  const [map, setMap] = useState(null);
+  let map = null;
 
   //init map
   //https://blog.mapbox.com/mapbox-gl-js-react-764da6cc074a
   useEffect(() => {
     const { lng, lat, zoom } = viewport;
 
-    const map = new mapboxgl.Map({
+    map = new mapboxgl.Map({
       container: mapContainer.current.id,
       style,
       center: [lng, lat],
       zoom
-    });
-
-    setMap(map); //add to state
-
-    //init extent search for charts - todo pull parmas from url: look at Logan's example
-
-    const extent =
-      "-73.96676264454007,40.66256118034471,-73.76698208851356,40.74780433961331";
-
-    map.on("load", () => {
-      updateVis(currentId, extent);
     });
 
     map.on("move", () => {
@@ -100,7 +88,16 @@ function App() {
     }
   }, [style]);
 
+  //init extent search for charts - todo pull parmas from url: look at Logan's example
+  useEffect(() => {
+    const extent =
+      "-73.96676264454007,40.66256118034471,-73.76698208851356,40.74780433961331";
+
+    updateVis(currentId, extent);
+  }, []);
+
   async function updateVis(currentId, extent) {
+    console.log(currentId, extent);
     const extentZCTAs = await extentSearch(extent).then(res =>
       res.features.map(feature => parseInt(feature.attributes.BASENAME, 10))
     );
@@ -147,8 +144,8 @@ function App() {
 
     expression.push("rgba(0,0,0,0)");
 
-    //const layer = map.getLayer("polygon");
-    if (true) {
+    console.log(map.getLayer("polygon"));
+    if (!map.getLayer("polygon")) {
       map.addLayer({
         id: "polygon",
         source: "esri",
