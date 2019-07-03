@@ -13,6 +13,15 @@ import censusPromise from "./helpers/censusPromise";
 //styles
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./styles.css";
+import { light_layers } from "./lib/light_layers.js";
+import { extent } from "d3";
+
+light_layers.sources["esri"] = {
+  type: "vector",
+  tiles: [
+    "https://gis-server.data.census.gov/arcgis/rest/services/Hosted/VT_2017_860_00_PY_D1/VectorTileServer//tile/{z}/{y}/{x}.pbf" //zcta
+  ]
+};
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiemhpayIsImEiOiJjaW1pbGFpdHQwMGNidnBrZzU5MjF5MTJiIn0.N-EURex2qvfEiBsm-W9j7w";
@@ -33,47 +42,33 @@ function App() {
 
   const [chartData, setChartData] = useState([]);
 
-  const [style, setStyle] = useState({
-    version: 8,
-    name: "blank",
-    sources: {
-      "mapbox-streets": {
-        type: "vector",
-        url: "mapbox://mapbox.mapbox-streets-v8"
-      },
-      esri: {
-        type: "vector",
-        tiles: [
-          "https://gis-server.data.census.gov/arcgis/rest/services/Hosted/VT_2017_860_00_PY_D1/VectorTileServer//tile/{z}/{y}/{x}.pbf" //zcta
-        ]
-      }
-    },
-    layers: [
-      {
-        id: "water",
-        source: "mapbox-streets",
-        "source-layer": "water",
-        type: "fill",
-        paint: {
-          "fill-color": "#00ffff"
-        }
-      }
-    ]
-  });
+  const [style, setStyle] = useState(light_layers);
 
   const mapContainer = useRef();
-  let map = null;
+
+  const [map, setMap] = useState(null);
 
   //init map
   //https://blog.mapbox.com/mapbox-gl-js-react-764da6cc074a
   useEffect(() => {
     const { lng, lat, zoom } = viewport;
 
-    map = new mapboxgl.Map({
+    const map = new mapboxgl.Map({
       container: mapContainer.current.id,
       style,
       center: [lng, lat],
       zoom
+    });
+
+    setMap(map); //add to state
+
+    //init extent search for charts - todo pull parmas from url: look at Logan's example
+
+    const extent =
+      "-73.96676264454007,40.66256118034471,-73.76698208851356,40.74780433961331";
+
+    map.on("load", () => {
+      updateVis(currentId, extent);
     });
 
     map.on("move", () => {
@@ -104,14 +99,6 @@ function App() {
       map.setStyle(style);
     }
   }, [style]);
-
-  //init extent search for charts - todo pull parmas from url: look at Logan's example
-  useEffect(() => {
-    const extent =
-      "-73.96676264454007,40.66256118034471,-73.76698208851356,40.74780433961331";
-
-    updateVis(currentId, extent);
-  }, [currentId]);
 
   async function updateVis(currentId, extent) {
     const extentZCTAs = await extentSearch(extent).then(res =>
@@ -147,7 +134,7 @@ function App() {
     //update state with data
     setChartData(data);
 
-    //add map layer
+    //add map layer or update layer
     const expression = ["match", ["get", "GEOID"]];
     const max = data.reduce((total, feature) => {
       return feature["estimate"] > total ? feature["estimate"] : total;
@@ -160,16 +147,22 @@ function App() {
 
     expression.push("rgba(0,0,0,0)");
 
-    map.addLayer({
-      id: "polygon",
-      source: "esri",
-      "source-layer": "ZCTA5",
-      type: "fill",
-      paint: {
-        "fill-color": expression
-      },
-      maxzoom: 17
-    });
+    //const layer = map.getLayer("polygon");
+    if (true) {
+      map.addLayer({
+        id: "polygon",
+        source: "esri",
+        "source-layer": "ZCTA5",
+        type: "fill",
+        paint: {
+          "fill-opacity": 0.6,
+          "fill-color": expression
+        },
+        maxzoom: 17
+      });
+    } else {
+      map.setPaintProperty("polygon", "fill-color", expression);
+    }
   }
 
   return (
@@ -180,7 +173,11 @@ function App() {
       <div className="panel-right">
         {extentChanged ? (
           <div id="extent">
-            <button>Update Search Extent</button>
+            <button
+              onClick={() => updateVis(currentId, viewport.extent.join(","))}
+            >
+              Update Search Extent
+            </button>
           </div>
         ) : null}
         <div id="map" ref={mapContainer} />

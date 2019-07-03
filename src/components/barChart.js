@@ -5,7 +5,8 @@ export default function BarChart({ data, currentId }) {
   const refElement = useRef(null);
 
   useEffect(() => {
-    if (refElement.current && data.length && currentId) {
+    const el = refElement.current;
+    if (el && data.length && currentId) {
       const margin = { top: 20, right: 20, bottom: 20, left: 40 },
         width = 500 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
@@ -18,7 +19,7 @@ export default function BarChart({ data, currentId }) {
       const x = d3.scaleLinear().range([0, width]);
 
       const chart = d3
-        .select(refElement.current)
+        .select(el)
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -45,6 +46,13 @@ export default function BarChart({ data, currentId }) {
         .call(d3.axisBottom(x));
 
       chart.append("g").call(d3.axisLeft(y));
+
+      return () => {
+        if (el)
+          d3.select(el)
+            .select("svg")
+            .remove();
+      };
     }
   });
 
