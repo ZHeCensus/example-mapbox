@@ -1,4 +1,4 @@
-export const light_layers = {
+const LIGHT_LAYERS = {
   version: 8,
   name: "Monochrome",
   metadata: {
@@ -3671,3 +3671,5 @@ export const light_layers = {
   visibility: "private",
   draft: false
 };
+
+export default LIGHT_LAYERS;

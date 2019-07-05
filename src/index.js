@@ -13,10 +13,9 @@ import censusPromise from './helpers/censusPromise';
 // styles
 import 'mapbox-gl/dist/mapbox-gl.css';
 import './styles.css';
-import { light_layers } from './lib/light_layers';
-import { extent } from 'd3';
+import LIGHT_LAYERS from './lib/light_layers';
 
-light_layers.sources.esri = {
+LIGHT_LAYERS.sources.esri = {
   type: 'vector',
   tiles: [
     'https://gis-server.data.census.gov/arcgis/rest/services/Hosted/VT_2017_860_00_PY_D1/VectorTileServer//tile/{z}/{y}/{x}.pbf' // zcta
@@ -42,7 +41,7 @@ function App() {
 
   const [chartData, setChartData] = useState([]);
 
-  const [style, setStyle] = useState(light_layers);
+  const [style, setStyle] = useState(LIGHT_LAYERS);
 
   const [map, setMap] = useState(null);
 
@@ -66,6 +65,11 @@ function App() {
   // map listeners
   useEffect(() => {
     if (map) {
+      const popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+      });
+
       map.on('move', () => {
         const { lng, lat } = map.getCenter();
         const { _sw, _ne } = map.getBounds();
@@ -81,10 +85,22 @@ function App() {
         });
       });
 
-      map.on('mousemove', e => {
+      map.on('click', e => {
         const features = map.queryRenderedFeatures(e.point);
 
-        // console.log(features.map(feature => feature.properties.BASENAME));
+        const filteredFeatures = features.filter(feature => feature.source === 'esri');
+        const description = filteredFeatures
+          .map(feature => {
+            return Object.entries(feature.properties)
+              .map(([key, value]) => `<strong>${key}</strong>: ${value}<br/>`)
+              .join('');
+          })
+          .join('');
+
+        popup
+          .setLngLat(e.lngLat)
+          .setHTML(description)
+          .addTo(map);
       });
 
       // init extent search for charts - todo pull parmas from url: look at Logan's example
@@ -105,8 +121,8 @@ function App() {
 
   async function updateVis(currentId, extent) {
     console.log(currentId, extent);
-    const extentZCTAs = await extentSearch(extent).then(res =>
-      res.features.map(feature => parseInt(feature.attributes.BASENAME, 10))
+    const extentIds = await extentSearch(extent).then(res =>
+      res.features.map(feature => feature.attributes.BASENAME)
     );
 
     const columns = ['B19001_001E', 'B19001_001M']; // HOUSEHOLD INCOME IN THE PAST 12 MONTHS
@@ -120,7 +136,7 @@ function App() {
       statsKey: CENSUS_API_KEY
     };
 
-    dataQuery.geoHierarchy[geoType] = [...new Set([...extentZCTAs, currentId])].join(','); // add currentZCTA if it isn't there already
+    dataQuery.geoHierarchy[geoType] = [...new Set([...extentIds, currentId])].join(','); // add currentZCTA if it isn't there already
 
     const data = await censusPromise(dataQuery).then(res =>
       res
